@@ -53,7 +53,7 @@ fun main(args: Array<String>) {
     router.get("/handbooks*").handler(StaticFileHandler("handbooks", File("handbooks")))
     router.get("/images*").handler(StaticFileHandler("images", File("images")))
     router.get("/elements.html").handler(SingleFileHandler(File("elements.html")))
-    router.get("/reload").handler { context ->
+    router.get("/reload").blockingHandler { context ->
         rawFiles.clear()
         rawFiles.addAll(raw.iterate().filter { file -> file.exists() && !file.isHidden && !file.name.startsWith(".") && !file.name.startsWith("__") && file.extension == "png" })
 
