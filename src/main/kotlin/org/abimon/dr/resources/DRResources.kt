@@ -34,13 +34,20 @@ fun main(args: Array<String>) {
     val taggedDir = File("tagged")
 
     val rawFiles = raw.iterate().filter { file -> file.exists() && !file.isHidden && !file.name.startsWith(".") && !file.name.startsWith("__") && file.extension == "png" }.toMutableList()
-    val sortedTags = sorted.iterate(true).filter { it.isDirectory }.map { tag -> tag.absolutePath.replace(sorted.absolutePath, "").substring(1) }.toMutableList()
+    val sortedTags = sorted.iterate(true).filter { it.isDirectory }.map { tag -> tag.absolutePath.replace(sorted.absolutePath, "").substring(1) }.toHashSet()
     val tags = HashMap<String, JsonArray>()
 
     rawFiles.filter { it.nameWithoutExtension.toIntOrNull() != null }.map { rawFile -> File(taggedDir, rawFile.nameWithoutExtension + ".json") }.filter { tagFile -> tagFile.exists() }.forEach { tags[it.nameWithoutExtension] = JsonArray(it.readText()) }
 
+    tags.values.flatMap { jsonArray -> jsonArray.list.filterIsInstance(String::class.java) }.distinct().filter { !sortedTags.contains(it) }.forEach { tag ->
+        val dir = File(sorted, tag)
+        dir.mkdirs()
+        sortedTags.add(tag)
+    }
+
     router.get("/").handler(RedirectHandler("/index.html"))
     router.get("/raw*").handler(StaticFileHandler("raw", File("raw")))
+    router.get("/all*").handler(StaticFileHandler("all", File("all")))
     router.get("/sorted*").handler(StaticFileHandler("sorted", File("sorted")))
     router.get("/assets*").handler(StaticFileHandler("assets", File("assets")))
     router.get("/handbooks*").handler(StaticFileHandler("handbooks", File("handbooks")))
@@ -55,6 +62,12 @@ fun main(args: Array<String>) {
 
         tags.clear()
         rawFiles.filter { it.nameWithoutExtension.toIntOrNull() != null }.map { rawFile -> File(taggedDir, rawFile.nameWithoutExtension + ".json") }.filter { tagFile -> tagFile.exists() }.forEach { tags[it.nameWithoutExtension] = JsonArray(it.readText()) }
+
+        tags.values.flatMap { jsonArray -> jsonArray.list.filterIsInstance(String::class.java) }.distinct().filter { !sortedTags.contains(it) }.forEach { tag ->
+            val dir = File(sorted, tag)
+            dir.mkdirs()
+            sortedTags.add(tag)
+        }
 
         StaticFileHandler.reload()
         context.response().redirect("/index.html")
@@ -134,7 +147,7 @@ fun main(args: Array<String>) {
 
             return@handler context.response().end(simulatedAndSorted[simulatedIndex - 1])
         }
-        else if(index < 0 || index > tagged.size) {
+        else if(index <= 0 || index > tagged.size) {
             if (tagged.isEmpty())
                 return@handler context.response().setStatusCode(400).putHeader("Content-Type", "application/json").end(JsonObject().put("error_code", 0).put("error", "No untagged objects").encode())
             else

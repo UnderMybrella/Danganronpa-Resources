@@ -27,7 +27,7 @@ class StaticFileHandler(val endpoint: String, val root: File) : Handler<RoutingC
 
         val path = context.request().path().toLowerCase()
         val file = File(root, path.replaceFirst("/$endpoint/", ""))
-        if (file.exists() && !file.isHidden && subfiles.contains(file)) {
+        if (file.exists() && !file.isHidden && subfiles.any { otherFile -> otherFile.absolutePath.equals(file.absolutePath, true) }) {
             if (file.isDirectory) {
                 if (File(file, "index.html").exists())
                     return context.response().redirect("/$endpoint${File(file, "index.html").absolutePath.replace(root.absolutePath, "").toLowerCase()}")
